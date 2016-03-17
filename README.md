@@ -6,7 +6,7 @@ A script using selenium to collect URLs to Google Hangouts.
 
 1. Clone the repository.
 
-         git clone https://github.com/unhangouts/hangout-farmer.git
+         git clone https://github.com/unhangout/hangout-farmer.git
 
 2. Install dependencies
 
