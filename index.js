@@ -119,24 +119,43 @@ var main = function() {
         return url.indexOf("https://myaccount.google.com") === 0;
       });
     });
+    getNextLink(driver, conf.count);
 
-    var linkSel = By.css("input[value^='https://hangouts.google.com/call/']");
-    for (var i = 0; i < conf.count; i++) {
-      driver.get(conf.startingUrl);
-      driver.wait(function() {
-        return driver.findElement(linkSel).isDisplayed();
-      }, 20000);
-      driver.findElement(linkSel).then(function(el) {
-        return el.getAttribute("value").then(function(value) {
-          if (value) {
-            console.log(value && value.replace("/call/", "/hangouts/_/"));
-          } else {
-            console.error("Link not found");
-          }
-        });
-      });
-    }
   });
+};
+
+function getNextLink(driver, count) {
+  var linkSel = By.css("input[value^='https://hangouts.google.com/call/']");
+  var abort = false;
+  driver.get(conf.startingUrl);
+  driver.wait(function() {
+    return driver.findElement(linkSel).then(function(el) {
+      return el.isDisplayed();
+    }).then(null, function(err) {
+      return false;
+    });
+  }, 20000).then(null, function(err) {
+    abort = true;
+    getNextLink(driver, count);
+  }).then(function() {
+    if (abort) {
+      return;
+    }
+    driver.findElement(linkSel).then(function(el) {
+      return el.getAttribute("value").then(function(value) {
+        if (value) {
+          console.log(value && value.replace("/call/", "/hangouts/_/"));
+          if (count > 0) {
+            getNextLink(driver, count - 1);
+          }
+        } else {
+          console.error("Link not found");
+          getNextLink(driver, count);
+        }
+      });
+    });
+  });
+
 };
 
 if (require.main === module) {
