@@ -1,0 +1,16 @@
+{
+  "name": "hangout-farmer",
+  "version": "0.0.1",
+  "description": "Farm hangout URLs from using selenium",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "./index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "firefox-profile": "^0.3.11",
+    "selenium-webdriver": "^2.53.1"
+  }
+}

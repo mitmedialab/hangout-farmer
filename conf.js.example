@@ -1,0 +1,17 @@
+module.exports = {
+    // Email for a google account to use to create the hangout links
+    "googleEmail": "test@example.com",
+    // Password for the google account
+    "googlePassword": "secret",
+    // URL to a valid google calendar "video" link"
+    "startingurl": "...",
+    // Number of hangout links to create
+    "count": 100,
+    // path to selenium server standalone jar.
+    "seleniumJar": "vendor/selenium-server-standalone.jar",
+    // path to the firefox binary to use.  Leave blank for using default system binary.
+    "firefoxBin": "",
+    "seleniumPort": 4444,
+    "seleniumVerboseLogging": false,
+    "seleniumJarVersion": "2.53.0",
+}
