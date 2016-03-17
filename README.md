@@ -12,7 +12,9 @@ A script using selenium to collect URLs to Google Hangouts.
 
          npm install
 
-3. Copy `conf.js.example` to `conf.js`, and edit the file to include your
+3. Make sure [Java](http://www.java.com/en/download) is installed.
+
+4. Copy `conf.js.example` to `conf.js`, and edit the file to include your
    configuration.  Required parameters are:
 
      * `googleEmail`: Email address for a valid google account to use to create the links.
