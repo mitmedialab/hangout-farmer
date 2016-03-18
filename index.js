@@ -144,7 +144,11 @@ function getNextLink(driver, count) {
     driver.findElement(linkSel).then(function(el) {
       return el.getAttribute("value").then(function(value) {
         if (value) {
-          console.log(value && value.replace("/call/", "/hangouts/_/"));
+          var url = value.replace("/call/", "/hangouts/_/");
+          console.log(url);
+          if (typeof conf.urlAcquiredCallback === 'function') {
+            conf.urlAcquiredCallback(url);
+          }
           if (count > 0) {
             getNextLink(driver, count - 1);
           }

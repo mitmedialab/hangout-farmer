@@ -14,4 +14,5 @@ module.exports = {
     "seleniumPort": 4444,
     "seleniumVerboseLogging": false,
     "seleniumJarVersion": "2.53.0",
+    // "urlAcquiredCallback": function(url) {},
 }
