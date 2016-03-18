@@ -28,6 +28,7 @@ A script using selenium to collect URLs to Google Hangouts.
      * `seleniumPort`: Port to which selenium standalone server should bind.
      * `seleniumVerboseLogging`: set to `true` to enable verbose logging of the selenium process.
      * `seleniumJarVersion`: The version of the selenium standalone server jar to download if not present.
+     * `urlAcquiredCallback`: An optional function to call after acquiring a Hangout URL. A single argument is passed, which is the acquired hangout URL.
 
 ## Usage
 
