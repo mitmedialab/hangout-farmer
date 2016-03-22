@@ -1,41 +1,41 @@
 #!/usr/bin/env node
-var fs = require("fs");
-var https = require("https");
-var path = require("path");
+"use strict";
+const fs = require("fs");
+const https = require("https");
+const path = require("path");
 
-var FirefoxProfile = require("firefox-profile");
-var SeleniumServer = require("selenium-webdriver/remote").SeleniumServer;
-var webdriver = require("selenium-webdriver");
-var By = webdriver.By;
-
-var conf = require("./conf")
+const FirefoxProfile = require("firefox-profile");
+const SeleniumServer = require("selenium-webdriver/remote").SeleniumServer;
+const webdriver = require("selenium-webdriver");
+const By = webdriver.By;
 
 /**
  * Build the absolute path to the selenium server standalone jar, and download
  * it if necessary.
+ * @param {Object} opts - Options as exported by conf.js.
  * @return Promise a promise which resolves to the string path to the selenium
  * server standalone jar.
  */
-var getSeleniumJarPath = function() {
-  if (!conf.seleniumJar) {
-    throw new Error("Please specify `seleniumJar` in conf.js");
+const getSeleniumJarPath = function(opts) {
+  if (!opts.seleniumJar) {
+    throw new Error("Please specify `seleniumJar`");
   }
-  var seleniumJarPath;
-  if (path.isAbsolute(conf.seleniumJar)) {
-    seleniumJarPath = conf.seleniumJar;
+  let seleniumJarPath;
+  if (path.isAbsolute(opts.seleniumJar)) {
+    seleniumJarPath = opts.seleniumJar;
   } else {
-    seleniumJarPath = path.join(__dirname, conf.seleniumJar);
+    seleniumJarPath = path.join(__dirname, opts.seleniumJar);
   }
 
   if (!fs.existsSync(seleniumJarPath)) {
-    var v = conf.seleniumJarVersion;
+    let v = opts.seleniumJarVersion;
     return new Promise(function(resolve, reject) {
-      var url = "https://selenium-release.storage.googleapis.com/" +
+      let url = "https://selenium-release.storage.googleapis.com/" +
         v.split(".").slice(0, 2).join(".") +
-        "/selenium-server-standalone-" + v + ".jar";
-      console.error("Downloading selenium jar " + url + " ...");
-      var file = fs.createWriteStream(seleniumJarPath);
-      var request = https.get(url, function(response) {
+        `/selenium-server-standalone-${v}.jar`;
+      console.error(`Downloading selenium jar ${url} ...`);
+      let file = fs.createWriteStream(seleniumJarPath);
+      let request = https.get(url, function(response) {
         response.pipe(file);
         file.on("finish", function() {
           file.close(function() { resolve(seleniumJarPath); })
@@ -51,23 +51,24 @@ var getSeleniumJarPath = function() {
 
 /**
  * Build a Selenium driver object which is ready to use.
+ * @param {Object} opts - Options as exported by conf.js.
  * @return Promise a promise which resolves to the driver object.
  */
-var buildDriver = function() {
-  var seleniumServer;
-  return getSeleniumJarPath().then(function(seleniumJarPath) {
-    var opts = {port: conf.seleniumPort};
-    if (conf.seleniumVerboseLogging) {
-      opts.stdio = "inherit";
+module.exports.buildDriver = function(opts) {
+  let seleniumServer;
+  return getSeleniumJarPath(opts).then(function(seleniumJarPath) {
+    let seleniumOpts = {port: opts.seleniumPort};
+    if (opts.seleniumVerboseLogging) {
+      seleniumOpts.stdio = "inherit";
     }
-    if (conf.firefoxBin) {
-      opts.jvmArgs = ["-Dwebdriver.firefox.bin=" + conf.firefoxBin];
+    if (opts.firefoxBin) {
+      seleniumOpts.jvmArgs = ["-Dwebdriver.firefox.bin=" + opts.firefoxBin];
     }
-    seleniumServer = new SeleniumServer(seleniumJarPath, opts);
+    seleniumServer = new SeleniumServer(seleniumJarPath, seleniumOpts);
     return seleniumServer.start(59000);
 
   }).then(function() {
-    var profile = new FirefoxProfile();
+    let profile = new FirefoxProfile();
     profile.setPreference("plugin.state.flash", 0);
     profile.setPreference("plugin.state.o1d", 2);
     profile.setPreference("plugin.state.googletalk", 2);
@@ -79,10 +80,10 @@ var buildDriver = function() {
       });
     });
   }).then(function(encodedProfile) {
-    var capabilities = webdriver.Capabilities.firefox();
+    let capabilities = webdriver.Capabilities.firefox();
     capabilities.set('firefox_profile', encodedProfile);
 
-    var driver = new webdriver.Builder()
+    let driver = new webdriver.Builder()
       .usingServer(seleniumServer.address())
       .withCapabilities(capabilities)
       .build();
@@ -99,15 +100,83 @@ var buildDriver = function() {
 };
 
 /**
- * Farm hangout URLs, printing them to stdout.
+ * Recursive function for retrieving URLs.
+ * @param {WebDriver} driver - The selenium webdriver instance to use.
+ * @param {Number} count - Integer number of URLs to retrieve.
+ * @param {String} startingUrl - The URL to refresh to obtain new hangout URLs.
+ * @param {Function} callback - Function to execute with each link. Should
+ * accept (err, url) arguments.
  */
-var main = function() {
-  buildDriver().then(function(driver) {
+function getNextLink(driver, count, startingUrl, callback) {
+  let recurse = function() { getNextLink(driver, count, startingUrl, callback); }
+  let linkSel = By.css("input[value^='https://hangouts.google.com/call/']");
+  let abort = false;
+  driver.get(startingUrl);
+  driver.wait(function() {
+    return driver.findElement(linkSel).then(function(el) {
+      return el.isDisplayed();
+    }).then(null, function(err) {
+      return false;
+    });
+  }, 20000).then(null, function(err) {
+    abort = true;
+    recurse();
+  }).then(function() {
+    if (abort) {
+      return;
+    }
+    driver.findElement(linkSel).then(function(el) {
+      return el.getAttribute("value").then(function(value) {
+        if (value) {
+          callback(null, value && value.replace("/call/", "/hangouts/_/"));
+          count--;
+          if (count > 0) {
+            recurse();
+          }
+        } else {
+          callback(new Error("Link not found in dom."));
+          recurse();
+        }
+      });
+    });
+  });
+};
+
+/**
+ * Farm hangout URLs, printing them to stdout.
+ * @param {Object} opts - Object containing the following options:
+ *  - googleEmail: {String}, email for google account to use.
+ *  - googlePassword: {String}, password for google account.
+ *  - startingUrl: {String}, URL for a google calendar invite to start from.
+ *  - count: {Number}, integer number of URLs to retrieve.
+ *  - seleniumJar: {String}, path to selenium jar to use. It will be downloaded
+ *    if it doesn't exist.
+ *  - seleniumPort: {Number}, integer port to use for selenium.
+ *  - seleniumVerboseLogging: {Boolean}, set true to ask selenium to log verbosely
+ *  - seleniumJarVersion: {String}, version string for selenium jar to download
+ *    if not present.
+ */
+module.exports.farmUrls = function(opts, callback, done) {
+  opts = Object.assign({
+    "count": 100,
+    "seleniumJar": "vendor/selenium-server-standalone.jar",
+    "firefoxBin": "",
+    "seleniumPort": 4444,
+    "seleniumVerboseLogging": false,
+    "seleniumJarVersion": "2.53.0",
+  }, opts);
+  ["googleEmail", "googlePassword", "startingUrl"].forEach(function(key) {
+    if (!opts[key]) {
+      throw new Error(`Missing required option ${key}`);
+    }
+  });
+
+  module.exports.buildDriver(opts).then(function(driver) {
     driver.get("https://accounts.google.com/ServiceLogin");
     // Authenticate
-    driver.findElement(By.css("#Email")).sendKeys(conf.googleEmail);
+    driver.findElement(By.css("#Email")).sendKeys(opts.googleEmail);
     driver.findElement(By.css("[name=signIn]")).click();
-    driver.findElement(By.css("#Passwd")).sendKeys(conf.googlePassword);
+    driver.findElement(By.css("#Passwd")).sendKeys(opts.googlePassword);
     driver.findElement(By.css("#signIn")).click();
     driver.getCurrentUrl().then((function(url) {
       if (url.indexOf("AccountRecovery") !== -1) {
@@ -119,45 +188,21 @@ var main = function() {
         return url.indexOf("https://myaccount.google.com") === 0;
       });
     });
-    getNextLink(driver, conf.count);
-
-  });
-};
-
-function getNextLink(driver, count) {
-  var linkSel = By.css("input[value^='https://hangouts.google.com/call/']");
-  var abort = false;
-  driver.get(conf.startingUrl);
-  driver.wait(function() {
-    return driver.findElement(linkSel).then(function(el) {
-      return el.isDisplayed();
-    }).then(null, function(err) {
-      return false;
-    });
-  }, 20000).then(null, function(err) {
-    abort = true;
-    getNextLink(driver, count);
-  }).then(function() {
-    if (abort) {
-      return;
-    }
-    driver.findElement(linkSel).then(function(el) {
-      return el.getAttribute("value").then(function(value) {
-        if (value) {
-          console.log(value && value.replace("/call/", "/hangouts/_/"));
-          if (count > 0) {
-            getNextLink(driver, count - 1);
-          }
-        } else {
-          console.error("Link not found");
-          getNextLink(driver, count);
-        }
-      });
+    getNextLink(driver, opts.count, opts.startingUrl, callback);
+    driver.quit().then(function() {
+      done && done();
     });
   });
-
 };
 
 if (require.main === module) {
-  main();
+  module.exports.farmUrls(require("./conf.js"), function(err, url) {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log(url);
+    }
+  }, function(err) {
+    console.error("done");
+  });
 };

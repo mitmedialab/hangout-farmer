@@ -4,7 +4,7 @@ module.exports = {
     // Password for the google account
     "googlePassword": "secret",
     // URL to a valid google calendar "video" link"
-    "startingurl": "...",
+    "startingUrl": "...",
     // Number of hangout links to create
     "count": 100,
     // path to selenium server standalone jar.
