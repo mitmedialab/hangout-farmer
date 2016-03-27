@@ -2,6 +2,8 @@
 
 A script using selenium to collect URLs to Google Hangouts.
 
+**IMPORTANT:** Generated URLs must be manually inserted into the Unhangout database, and the Unhangout server restarted in order for the URLs to be available to the installation.
+
 ## Install
 
 1. Clone the repository.
