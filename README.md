@@ -2,6 +2,8 @@
 
 A script using selenium to collect URLs to Google Hangouts.
 
+**WARNING:** URLs farmed using this strategy do not appear to be robust against Google Apps (organizational/business) accounts. If the first user to join one of these hangouts uses a google account associated with an organization, the hangout may be limited to participants who are also from that organization.
+
 **IMPORTANT:** Generated URLs must be manually inserted into the Unhangout database, and the Unhangout server restarted in order for the URLs to be available to the installation.
 
 ## Install
