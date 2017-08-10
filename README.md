@@ -1,3 +1,9 @@
+# Retired
+
+This code is no longer maintained and probably no longer of any value.  It was written for an older version of Unhangout that is no longer maintained.
+
+--------
+
 # Hangout Farmer
 
 A script using selenium to collect URLs to Google Hangouts.
